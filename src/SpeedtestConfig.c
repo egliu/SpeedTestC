@@ -65,8 +65,8 @@ static void parseUpload(const char *configline, SPEEDTESTCONFIG_T **result_p)
 	SPEEDTESTCONFIG_T *result = *result_p;
 	char threads[8] = {"3"}, testlength[8] = {"9"};
 
-	getValue(configline, "testlength=", testlength);
-	getValue(configline, "threads=", threads);
+	getValue(configline, "testlength=\"", testlength);
+	getValue(configline, "threads=\"", threads);
 
 	result->uploadThreadConfig.threadsCount = atoi(threads);
 	result->uploadThreadConfig.length = atoi(testlength);
@@ -77,7 +77,7 @@ static void parseDownload(const char *configline, SPEEDTESTCONFIG_T **result_p)
 	SPEEDTESTCONFIG_T *result = *result_p;
 	char threadcount[8] = {"3"};
 
-	getValue(configline, "threadcount=", threadcount);
+	getValue(configline, "threadcount=\"", threadcount);
 
 	result->downloadThreadConfig.threadsCount = atoi(threadcount);
 }
@@ -86,10 +86,13 @@ static void parseServerConfig(const char *configline, SPEEDTESTCONFIG_T **result
 {
 	SPEEDTESTCONFIG_T *result = *result_p;
 	char threadcount[8] = {"3"};
+	char ignoreids[65535] = {0};
 
-	getValue(configline, "threadcount=", threadcount);
+	getValue(configline, "threadcount=\"", threadcount);
+	getValue(configline, "ignoreids=\"", ignoreids);
 
 	result->downloadThreadConfig.threadsCount = atoi(threadcount);
+	strncpy(result->ignoreServers, ignoreids, 65535);
 }
 
 SPEEDTESTCONFIG_T *getConfig()
@@ -99,7 +102,7 @@ SPEEDTESTCONFIG_T *getConfig()
 		int i, parsed = 0;
     long size;
 		void (*parsefuncs[])(const char *configline, SPEEDTESTCONFIG_T **result_p)
-							= { parseClient, parseUpload, parseDownload, parseServerConfig };
+							= { parseClient, parseUpload, parseServerConfig, parseDownload};
     int sockId = httpGetRequestSocket("http://www.speedtest.net/speedtest-config.php");
 
 		if(!sockId)
