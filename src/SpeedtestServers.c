@@ -6,93 +6,148 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "SpeedtestServers.h"
 #include "http.h"
 
-void parseServer(SPEEDTESTSERVER_T *result, const char *configline)
+bool isIgnored(char *id, char *ignoreServers)
 {
-    /* TODO: Remove Switch, replace it with something space-friendly
-    result = malloc(sizeof(SPEEDTESTSERVER_T));*/
-    int tokensize,size;
-    char *first, *second, *substr;
-    const char *tokens[8] = {"url=\"","lat=\"", "lon=\"", "name=\"",
-                                "country=\"", "cc=\"", "sponsor=\"", "id=\""};
-    int i;
-    for(i=1; i < 8; i++)
-    {
-        first = strstr(configline, tokens[i-1]);
-        second = strstr(configline, tokens[i]);
-        if(first == NULL || second==NULL )
-            return;
-        tokensize = strlen(tokens[i-1]);
-        size = second - first - 1;
-        substr = calloc(sizeof(char), size);
-        strncpy(substr, first+tokensize, size - tokensize - 1);
-        substr[size - tokensize] = '\0';
-        switch(i)
-        {
+    bool ignored = false;
+    char *pos = NULL;
+    
+    pos = strstr(ignoreServers, id);
+    if (NULL != pos) {
+        char *nextChar = pos+strlen(id);
+        if ((nextChar[0] == ',') || (nextChar[0] == '\0')) {
+            ignored = true;
+        }
+    }
+    return ignored;
+}
+
+SPEEDTESTSERVER_T *parseServer(const char *configline, char *ignoreServers)
+{
+    int tokenSize = 0;
+    char *posBegin = NULL;
+    char *posEnd = NULL;
+    char *subStr = NULL;
+    SPEEDTESTSERVER_T *result = NULL;
+    const char *tokens[8] = {"id=\"", "url=\"","lat=\"", "lon=\"",
+                             "name=\"", "country=\"", "sponsor=\""};
+    int count = 0;
+    for(count=0; count<7; count++) {
+        posBegin = strstr(configline, tokens[count]);
+        if (NULL == posBegin) {
+            break;
+        }
+        tokenSize = strlen(tokens[count]);
+        posEnd = strstr(posBegin+tokenSize, "\"");
+        if (NULL == posEnd) {
+            break;
+        }
+        subStr = calloc(sizeof(char), posEnd-posBegin-tokenSize+1);
+        if (subStr) {
+            strncpy(subStr, posBegin+tokenSize, posEnd-posBegin-tokenSize);
+            subStr[posEnd-posBegin-tokenSize] = '\0';
+        } else {
+            fprintf(stderr, "Unable to allocate memory for subStr!\n");
+            exit(1);
+        }
+        if (count == 0) {
+            if (false == isIgnored(subStr, ignoreServers)) {
+                result = malloc(sizeof(SPEEDTESTSERVER_T));
+                if (result) {
+                    memset(result, 0, sizeof(SPEEDTESTSERVER_T));
+                    result->url = subStr;
+                } else {
+                    fprintf(stderr, "Unable to allocate memory for SPEEDTESTSERVER_T!\n");
+                    exit(1);
+                }
+            } else {
+                free(subStr);
+                break;
+            }
+        }
+        switch(count) {
             case 1:
-                result->url = substr;
+                result->url = subStr;
                 break;
             case 2:
-                result->lat = strtof(substr, NULL);
-                free(substr);
+                result->lat = strtof(subStr, NULL);
+                free(subStr);
                 break;
             case 3:
-                result->lon = strtof(substr, NULL);
-                free(substr);
+                result->lon = strtof(subStr, NULL);
+                free(subStr);
                 break;
             case 4:
-                result->name = substr;
+                result->name = subStr;
                 break;
             case 5:
-                result->country = substr;
+                result->country = subStr;
                 break;
-            case 7:
-                result->sponsor = substr;
+            case 6:
+                result->sponsor = subStr;
                 break;
             default:
-                free(substr);
+                free(subStr);
                 break;
         }
     }
+    return result;
 }
 
-SPEEDTESTSERVER_T **getServers(int *serverCount, const char *infraUrl)
+SPEEDTESTSERVER_T **getServers(int *serverCount, char *ignoreServers)
 {
     char buffer[1500] = {0};
     SPEEDTESTSERVER_T **list = NULL;
-    int sockId = httpGetRequestSocket(infraUrl);
-    if(sockId) {
-        long size;
-        while((size = recvLine(sockId, buffer, sizeof(buffer))) > 0)
-        {
-            buffer[size + 1] = '\0';
-            if(strlen(buffer) > 25)
-            {
-                /*Ommiting XML invocation...*/
-                if (strstr(buffer, "<?xml"))
-                    continue;
-                /*TODO: Fix case when server entry doesn't fit in TCP packet*/
-                if(buffer[0] == '<' && buffer[size - 1] == '>')
-                {
-                    *serverCount = *serverCount + 1;
-                    list = (SPEEDTESTSERVER_T**)realloc(list,
-                        sizeof(SPEEDTESTSERVER_T**) * (*serverCount));
-                    if(list == NULL) {
-                        fprintf(stderr, "Unable to allocate memory for servers!\n");
-                        exit(1);
+    char *urls[] = {"http://www.speedtest.net/speedtest-servers-static.php",
+        "http://c.speedtest.net/speedtest-servers-static.php",
+        "http://www.speedtest.net/speedtest-servers.php",
+        "http://c.speedtest.net/speedtest-servers.php"};
+    const u_int32_t urlsCount = 4;
+    u_int32_t count = 0;
+    u_int32_t reallocCount = 0;
+
+    /* malloc the size as the macro SERVER_SIZE defines */
+    list = (SPEEDTESTSERVER_T**)calloc(SERVER_SIZE, sizeof(SPEEDTESTSERVER_T**));
+    if (NULL == list) {
+        fprintf(stderr, "Unable to allocate memory for servers!\n");
+        exit(1);
+    }
+    for(count = 0; count < urlsCount; count++) {
+        int sockId = httpGetRequestSocket(urls[count]);
+        if (sockId) {
+            long size = 0;
+            while((size = recvLine(sockId, buffer, sizeof(buffer))) > 0) {
+                buffer[size + 1] = '\0';
+                if (strlen(buffer) > 25) {
+                    /* Omiting XML invocation... */
+                    if (strstr(buffer, "<?xml")) {
+                        continue;
                     }
-                    list[*serverCount - 1] = malloc(sizeof(SPEEDTESTSERVER_T));
-                    if(list[*serverCount - 1])
-                        parseServer(list[*serverCount - 1],buffer);
+                    if ((buffer[0] == '<') && (buffer[size-1] == '>')) {
+                        if (*serverCount >= (SERVER_SIZE+reallocCount*SERVER_SIZE/2)) {
+                            reallocCount++;
+                            list = (SPEEDTESTSERVER_T**)realloc(list,
+                                sizeof(SPEEDTESTSERVER_T**)*(SERVER_SIZE+reallocCount*SERVER_SIZE/2));
+                            if (NULL == list) {
+                                fprintf(stderr, "Unable to allocate memory for servers!\n");
+                                exit(1);
+                            }
+                        }
+                        list[*serverCount] = parseServer(buffer, ignoreServers);
+                        if (NULL != list[*serverCount]) {
+                            *serverCount = *serverCount + 1;
+                        }
+                    }
                 }
             }
+            httpClose(sockId);
         }
-        httpClose(sockId);
-        return list;
     }
-    return NULL;
+
+    return list;
 }
 
 static char *modifyServerUrl(char *serverUrl, const char *urlFile)
@@ -116,7 +171,7 @@ static char *modifyServerUrl(char *serverUrl, const char *urlFile)
 
 char *getServerDownloadUrl(char *serverUrl)
 {
-  return modifyServerUrl(serverUrl, "random4000x4000.jpg");
+  return modifyServerUrl(serverUrl, "random350x350.jpg");
 }
 
 char *getLatencyUrl(char *serverUrl)
