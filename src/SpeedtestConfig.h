@@ -23,6 +23,7 @@ typedef struct speedtestConfig
 	char isp[255];
 	THREADCONFIG_T uploadThreadConfig;
 	THREADCONFIG_T downloadThreadConfig;
+	char ignoreServers[65535];
 } SPEEDTESTCONFIG_T;
 
 SPEEDTESTCONFIG_T *getConfig();
