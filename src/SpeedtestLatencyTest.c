@@ -11,11 +11,12 @@
 which contains 10 chars: "test=test\n"*/
 #define LATENCY_SIZE 10
 
-void testLatency(const char *url)
+int testLatency(const char *url)
 {
   char buffer[LATENCY_SIZE] = {0};
   int sockId, size = -1;
 	struct timeval tval_start;
+	int latency = 0;
 
   gettimeofday(&tval_start, NULL);
 	sockId = httpGetRequestSocket(url);
@@ -23,7 +24,8 @@ void testLatency(const char *url)
 	if(sockId == 0)
 	{
 	  fprintf(stderr, "ERROR: Unable to open socket for testing latency!");
-		exit(1);
+		// exit(1);
+		return 3600*1000;
 	}
 
 	while(size != 0)
@@ -32,9 +34,12 @@ void testLatency(const char *url)
 		if (size == -1)
     {
       fprintf(stderr, "ERROR: Cannot download latency!");
-      exit(1);
+      // exit(1);
+			return 3600*1000;
     }
 	}
 	httpClose(sockId);
-  printf("Latency: %d ms\n", (int)(getElapsedTime(tval_start) * 1000.0f) );
+	latency = (int)(getElapsedTime(tval_start) * 1000.0f);
+  // printf("Latency: %d ms\n", latency);
+	return latency;
 }

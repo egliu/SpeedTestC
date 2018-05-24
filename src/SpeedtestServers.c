@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include "SpeedtestServers.h"
 #include "http.h"
+#include "SpeedtestConfig.h"
 
 bool isIgnored(char *id, char *ignoreServers)
 {
@@ -97,7 +98,7 @@ SPEEDTESTSERVER_T *parseServer(const char *configline, char *ignoreServers)
     return result;
 }
 
-SPEEDTESTSERVER_T **getServers(int *serverCount, char *ignoreServers)
+SPEEDTESTSERVER_T **getServers(int *serverCount, char *ignoreServers, float lat, float lon)
 {
     char buffer[1500] = {0};
     SPEEDTESTSERVER_T **list = NULL;
@@ -138,12 +139,17 @@ SPEEDTESTSERVER_T **getServers(int *serverCount, char *ignoreServers)
                         }
                         list[*serverCount] = parseServer(buffer, ignoreServers);
                         if (NULL != list[*serverCount]) {
+                            list[*serverCount]->distance = haversineDistance(lat, lon,
+                                list[*serverCount]->lat, list[*serverCount]->lon);
                             *serverCount = *serverCount + 1;
                         }
                     }
                 }
             }
             httpClose(sockId);
+        }
+        if (*serverCount > 0) {
+            break;
         }
     }
 
@@ -153,9 +159,17 @@ SPEEDTESTSERVER_T **getServers(int *serverCount, char *ignoreServers)
 static char *modifyServerUrl(char *serverUrl, const char *urlFile)
 {
   size_t urlSize = strlen(serverUrl);
-  char *upload = strstr(serverUrl, "upload.php");
+  char *upload = NULL;
+  /* find the last '/' */
+  for(int count=0; count<urlSize; count++) {
+      char *pos = serverUrl + urlSize - count - 1;
+      if (*pos == '/') {
+          upload = pos + 1;
+          break;
+      }
+  }
   if(upload == NULL) {
-      printf("Download URL parsing error - cannot find upload.php in %s\n",
+      printf("Server URL parsing error - in %s\n",
           serverUrl);
       exit(1);
   }

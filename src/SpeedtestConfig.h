@@ -27,5 +27,5 @@ typedef struct speedtestConfig
 } SPEEDTESTCONFIG_T;
 
 SPEEDTESTCONFIG_T *getConfig();
-long haversineDistance(float lat1, float lon1, float lat2, float lon2);
+float haversineDistance(float lat1, float lon1, float lat2, float lon2);
 #endif

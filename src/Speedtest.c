@@ -94,6 +94,7 @@ void freeMem()
 void getBestServer()
 {
     size_t selectedServer = 0;
+    float selectedLatency = 0.0;
     speedTestConfig = getConfig();
     if (speedTestConfig == NULL)
     {
@@ -104,7 +105,8 @@ void getBestServer()
     printf("Your IP: %s And ISP: %s\n",
                 speedTestConfig->ip, speedTestConfig->isp);
     printf("Lat: %f Lon: %f\n", speedTestConfig->lat, speedTestConfig->lon);
-    serverList = getServers(&serverCount, speedTestConfig->ignoreServers);
+    serverList = getServers(&serverCount, speedTestConfig->ignoreServers,
+        speedTestConfig->lat, speedTestConfig->lon);
     printf("Grabbed %d servers\n", serverCount);
     if (serverCount == 0)
     {
@@ -112,11 +114,6 @@ void getBestServer()
         freeMem();
         exit(1);
     }
-    for(i=0; i<serverCount; i++)
-        serverList[i]->distance = haversineDistance(speedTestConfig->lat,
-            speedTestConfig->lon,
-            serverList[i]->lat,
-            serverList[i]->lon);
 
     qsort(serverList, serverCount, sizeof(SPEEDTESTSERVER_T *),
                 (int (*)(const void *,const void *)) sortServers);
@@ -125,11 +122,29 @@ void getBestServer()
         printf("Randomizing selection of %d best servers...\n", randomizeBestServers);
         srand(time(NULL));
         selectedServer = rand() % randomizeBestServers;
+    } else {
+        /* Choose the best server based ping latency in the 5 closest servers */
+        int latency[5] = {0};
+        for(int count=0; count<5; count++) {
+            char *url = getLatencyUrl(serverList[count]->url);
+            if (NULL != url) {
+                /* test latency 3 times*/
+                for(int tCount=0; tCount<3; tCount++) {
+                    latency[count] += testLatency(url);
+                }
+                if (count > 0) {
+                    if(latency[count] < latency[selectedServer]) {
+                        selectedServer = count;
+                    }
+                }
+            }
+        }
+        selectedLatency = latency[selectedServer] / 3;
     }
 
-    printf("Best Server URL: %s\n\t Name: %s Country: %s Sponsor: %s Dist: %ld km\n",
+    printf("Best Server URL: %s\n\t Name: %s Country: %s Sponsor: %s Dist: %f km, latency: %f ms\n",
         serverList[selectedServer]->url, serverList[selectedServer]->name, serverList[selectedServer]->country,
-        serverList[selectedServer]->sponsor, serverList[selectedServer]->distance);
+        serverList[selectedServer]->sponsor, serverList[selectedServer]->distance, selectedLatency);
     downloadUrl = getServerDownloadUrl(serverList[selectedServer]->url);
     uploadUrl = malloc(sizeof(char) * strlen(serverList[selectedServer]->url) + 1);
     strcpy(uploadUrl, serverList[selectedServer]->url);
