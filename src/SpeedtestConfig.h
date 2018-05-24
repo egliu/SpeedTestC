@@ -11,6 +11,8 @@
 #endif /* ARRAY_SIZE */
 
 typedef struct ThreadConfig {
+	int *sizes;
+	int count;
 	int threadsCount; /* number of threads */
 	int length; /* testlength? */
 } THREADCONFIG_T;
@@ -24,6 +26,7 @@ typedef struct speedtestConfig
 	THREADCONFIG_T uploadThreadConfig;
 	THREADCONFIG_T downloadThreadConfig;
 	char ignoreServers[65535];
+	int upload_max;
 } SPEEDTESTCONFIG_T;
 
 SPEEDTESTCONFIG_T *getConfig();

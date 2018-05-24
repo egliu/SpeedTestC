@@ -63,35 +63,61 @@ static void parseClient(const char *configline, SPEEDTESTCONFIG_T **result_p)
 static void parseUpload(const char *configline, SPEEDTESTCONFIG_T **result_p)
 {
 	SPEEDTESTCONFIG_T *result = *result_p;
-	char threads[8] = {"3"}, testlength[8] = {"9"};
+	char threads[8] = {"2"}, testlength[8] = {"10"}, ratios[8] = {"5"}, maxchunkcount[8] = {"50"};
+	int upSizes[] = {32768, 65536, 131072, 262144, 524288, 1048576, 7340032};
+	int upSizesLength = ARRAY_SIZE(upSizes);
+	int ratio = 5;
+	int size = 0;
 
 	getValue(configline, "testlength=\"", testlength);
 	getValue(configline, "threads=\"", threads);
+	getValue(configline, "ratio=\"", ratios);
+	getValue(configline, "maxchunkcount=\"", maxchunkcount);
 
 	result->uploadThreadConfig.threadsCount = atoi(threads);
 	result->uploadThreadConfig.length = atoi(testlength);
+	ratio = atoi(ratios);
+	
+	if (ratio <= upSizesLength) {
+		size = upSizesLength - ratio + 1;
+		result->uploadThreadConfig.sizes = calloc(size, sizeof(int));
+		for(int count=0; count<size; count++) {
+			result->uploadThreadConfig.sizes[count] = upSizes[ratio-1+count];
+		}
+		result->uploadThreadConfig.count = (int)(ceil(atoi(maxchunkcount) / size));
+		result->upload_max = result->uploadThreadConfig.count * size;
+	}
 }
 
 static void parseDownload(const char *configline, SPEEDTESTCONFIG_T **result_p)
 {
 	SPEEDTESTCONFIG_T *result = *result_p;
-	char threadcount[8] = {"3"};
+	char count[8] = {"4"};
+	char length[8] = {"10"};
+	int downSizes[] = {350, 500, 750, 1000, 1500, 2000, 2500, 3000, 3500, 4000};
+	int downSizesLength = ARRAY_SIZE(downSizes);
 
-	getValue(configline, "threadcount=\"", threadcount);
+	getValue(configline, "threadsperurl=\"", count);
+	getValue(configline, "testlength=\"", length);
 
-	result->downloadThreadConfig.threadsCount = atoi(threadcount);
+	result->downloadThreadConfig.count = atoi(count);
+	result->downloadThreadConfig.length = atoi(length);
+	result->downloadThreadConfig.sizes = calloc(downSizesLength, sizeof(int));
+	for(int count=0; count<downSizesLength; count++) {
+		result->downloadThreadConfig.sizes[count] = downSizes[count];
+	}
 }
 
 static void parseServerConfig(const char *configline, SPEEDTESTCONFIG_T **result_p)
 {
 	SPEEDTESTCONFIG_T *result = *result_p;
-	char threadcount[8] = {"3"};
+	char threadcount[8] = {"4"};
 	char ignoreids[65535] = {0};
 
 	getValue(configline, "threadcount=\"", threadcount);
 	getValue(configline, "ignoreids=\"", ignoreids);
 
-	result->downloadThreadConfig.threadsCount = atoi(threadcount);
+	result->downloadThreadConfig.threadsCount = atoi(threadcount)*2;
 	strncpy(result->ignoreServers, ignoreids, 65535);
 }
 
