@@ -171,7 +171,6 @@ static void getUserDefinedServer()
 
 int main(int argc, char **argv)
 {
-  totalTransfered = 1024 * 1024;
   totalToBeTransfered = 1024 * 1024;
   totalDownloadTestCount = 1;
   randomizeBestServers = 0;

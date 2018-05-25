@@ -39,6 +39,7 @@ void testDownload(const char *url)
   THREADARGS_T *param = (THREADARGS_T *)calloc(numOfThreads, sizeof(THREADARGS_T));
   int i;
   float speed = 0;
+  unsigned long totalTransfered = 0;
 
   /* Initialize and start threads */
   gettimeofday(&tval_start, NULL);

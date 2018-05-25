@@ -185,7 +185,6 @@ static char *modifyServerUrl(char *serverUrl, const char *urlFile)
 
 char *getServerDownloadUrl(char *serverUrl, int size)
 {
-//   char str[]  
   char front[] = {"random"};
   char middle[] = {"x"};
   char back[] = {".jpg"};
@@ -200,7 +199,6 @@ char *getServerDownloadUrl(char *serverUrl, int size)
   char *result = modifyServerUrl(serverUrl, full);
   free(full);
   return result;
-//   return modifyServerUrl(serverUrl, "random350x350.jpg");
 }
 
 char *getLatencyUrl(char *serverUrl)

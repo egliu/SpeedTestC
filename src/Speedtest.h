@@ -14,7 +14,6 @@ unsigned totalDownloadTestCount;
 char buffer[BUFFER_SIZE];
 char *tmpUrl;
 char *uploadUrl;
-unsigned long totalTransfered;
 unsigned long totalToBeTransfered;
 struct timeval tval_start;
 float elapsedSecs;

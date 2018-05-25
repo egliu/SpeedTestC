@@ -84,7 +84,7 @@ void testUpload(const char *url)
 	}
 
 	/* Refresh */
-	totalTransfered = 0;
+	unsigned long totalTransfered = 0;
 	float speed = 0;
 
 	/* Wait for all threads */
