@@ -38,8 +38,6 @@ static void *__uploadThread(void *arg)
   }
 
 	gettimeofday(&tval_start, NULL);
-	for (i = 0; i < threadConfig->testCount; i++)
-  {
 		__appendTimestamp(threadConfig->url, uploadUrl, sizeof(uploadUrl));
 		/* FIXME: totalToBeTransfered should be readonly while the upload thread is running */
     totalTransfered = totalToBeTransfered;
@@ -63,7 +61,6 @@ static void *__uploadThread(void *arg)
   		}
 
       totalTransfered -= size;
-    }
 		threadConfig->transferedBytes += totalToBeTransfered;
 		/* Cleanup */
 		httpClose(sockId);
@@ -80,11 +77,6 @@ void testUpload(const char *url)
 	int i;
 	for (i = 0; i < numOfThreads; i++) {
 		/* Initializing some parameters */
-		param[i].testCount =  speedTestConfig->uploadThreadConfig.length;
-		if (param[i].testCount == 0) {
-			/* At least three test should be run */
-			param[i].testCount = 3;
-		}
 		param[i].url = strdup(url);
 		if (param[i].url) {
 			pthread_create(&param[i].tid, NULL, &__uploadThread, &param[i]);

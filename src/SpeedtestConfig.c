@@ -84,6 +84,7 @@ static void parseUpload(const char *configline, SPEEDTESTCONFIG_T **result_p)
 		for(int count=0; count<size; count++) {
 			result->uploadThreadConfig.sizes[count] = upSizes[ratio-1+count];
 		}
+		result->uploadThreadConfig.sizeLength = size;
 		result->uploadThreadConfig.count = (int)(ceil(atoi(maxchunkcount) / size));
 		result->upload_max = result->uploadThreadConfig.count * size;
 	}
@@ -103,6 +104,7 @@ static void parseDownload(const char *configline, SPEEDTESTCONFIG_T **result_p)
 	result->downloadThreadConfig.count = atoi(count);
 	result->downloadThreadConfig.length = atoi(length);
 	result->downloadThreadConfig.sizes = calloc(downSizesLength, sizeof(int));
+	result->downloadThreadConfig.sizeLength = downSizesLength;
 	for(int count=0; count<downSizesLength; count++) {
 		result->downloadThreadConfig.sizes[count] = downSizes[count];
 	}

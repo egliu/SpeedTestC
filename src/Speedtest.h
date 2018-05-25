@@ -5,17 +5,15 @@
 #include <pthread.h>
 
 #define SPEED_TEST_FILE_SIZE 31625365
-#define BUFFER_SIZE 1500
+#define BUFFER_SIZE 10240
 SPEEDTESTCONFIG_T *speedTestConfig;
 SPEEDTESTSERVER_T **serverList;
 int serverCount;
 int i, size, sockId;
 unsigned totalDownloadTestCount;
 char buffer[BUFFER_SIZE];
-char *downloadUrl;
 char *tmpUrl;
 char *uploadUrl;
-char *latencyUrl;
 unsigned long totalTransfered;
 unsigned long totalToBeTransfered;
 struct timeval tval_start;
@@ -24,9 +22,9 @@ int randomizeBestServers;
 typedef struct thread_args {
   pthread_t tid;
   char *url;
-  unsigned int testCount;
   unsigned long transferedBytes;
   float elapsedSecs;
+  unsigned int timeout;
 } THREADARGS_T;
 
 float getElapsedTime(struct timeval tval_start);

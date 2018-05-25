@@ -12,6 +12,7 @@
 
 typedef struct ThreadConfig {
 	int *sizes;
+	int sizeLength;
 	int count;
 	int threadsCount; /* number of threads */
 	int length; /* testlength? */

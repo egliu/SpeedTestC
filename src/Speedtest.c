@@ -64,8 +64,8 @@ void parseCmdLine(int argc, char **argv) {
         }
         if(strcmp("--server", argv[i]) == 0)
         {
-            downloadUrl = malloc(sizeof(char) * strlen(argv[i+1]) + 1);
-            strcpy(downloadUrl, argv[i + 1]);
+            uploadUrl = malloc(sizeof(char) * strlen(argv[i+1]) + 1);
+            strcpy(uploadUrl, argv[i + 1]);
         }
         if(strcmp("--upsize", argv[i]) == 0)
         {
@@ -84,10 +84,10 @@ void parseCmdLine(int argc, char **argv) {
 
 void freeMem()
 {
-    free(latencyUrl);
-    free(downloadUrl);
     free(uploadUrl);
     free(serverList);
+    free(speedTestConfig->downloadThreadConfig.sizes);
+    free(speedTestConfig->uploadThreadConfig.sizes);
     free(speedTestConfig);
 }
 
@@ -137,6 +137,7 @@ void getBestServer()
                         selectedServer = count;
                     }
                 }
+                free(url);
             }
         }
         selectedLatency = latency[selectedServer] / 3;
@@ -145,7 +146,6 @@ void getBestServer()
     printf("Best Server URL: %s\n\t Name: %s Country: %s Sponsor: %s Dist: %f km, latency: %f ms\n",
         serverList[selectedServer]->url, serverList[selectedServer]->name, serverList[selectedServer]->country,
         serverList[selectedServer]->sponsor, serverList[selectedServer]->distance, selectedLatency);
-    downloadUrl = getServerDownloadUrl(serverList[selectedServer]->url);
     uploadUrl = malloc(sizeof(char) * strlen(serverList[selectedServer]->url) + 1);
     strcpy(uploadUrl, serverList[selectedServer]->url);
 
@@ -167,12 +167,6 @@ static void getUserDefinedServer()
     speedTestConfig->downloadThreadConfig.threadsCount = 4;
     speedTestConfig->uploadThreadConfig.threadsCount = 2;
     speedTestConfig->uploadThreadConfig.length = 3;
-
-    uploadUrl = downloadUrl;
-    tmpUrl = malloc(sizeof(char) * strlen(downloadUrl) + 1);
-    strcpy(tmpUrl, downloadUrl);
-    downloadUrl = getServerDownloadUrl(tmpUrl);
-    free(tmpUrl);
 }
 
 int main(int argc, char **argv)
@@ -184,7 +178,7 @@ int main(int argc, char **argv)
   speedTestConfig = NULL;
   parseCmdLine(argc, argv);
 
-  if(downloadUrl == NULL)
+  if(uploadUrl == NULL)
   {
       getBestServer();
   }
@@ -193,10 +187,8 @@ int main(int argc, char **argv)
       getUserDefinedServer();
   }
 
-  latencyUrl = getLatencyUrl(uploadUrl);
-  testLatency(latencyUrl);
-  testDownload(downloadUrl);
-  testUpload(uploadUrl);
+  testDownload(uploadUrl);
+//   testUpload(uploadUrl);
 
   freeMem();
   return 0;

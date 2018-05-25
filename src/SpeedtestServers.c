@@ -183,9 +183,24 @@ static char *modifyServerUrl(char *serverUrl, const char *urlFile)
   return result;
 }
 
-char *getServerDownloadUrl(char *serverUrl)
+char *getServerDownloadUrl(char *serverUrl, int size)
 {
-  return modifyServerUrl(serverUrl, "random350x350.jpg");
+//   char str[]  
+  char front[] = {"random"};
+  char middle[] = {"x"};
+  char back[] = {".jpg"};
+  char str[10] = {0};
+  sprintf(str, "%d", size);
+  char *full = malloc(strlen(front)+strlen(str)*2+strlen(middle)+strlen(back)+1);
+  strcpy(full, front);
+  strcat(full, str);
+  strcat(full, middle);
+  strcat(full, str);
+  strcat(full, back);
+  char *result = modifyServerUrl(serverUrl, full);
+  free(full);
+  return result;
+//   return modifyServerUrl(serverUrl, "random350x350.jpg");
 }
 
 char *getLatencyUrl(char *serverUrl)
