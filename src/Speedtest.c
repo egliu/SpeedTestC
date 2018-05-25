@@ -54,8 +54,8 @@ void parseCmdLine(int argc, char **argv) {
             printf("Usage (options are case sensitive):\n\
             \t--help - Show this help.\n\
             \t--server URL - use server URL, don'read config.\n\
-            \t--upsize SIZE - use upload size of SIZE bytes.\n\
-            \t--downtimes TIMES - how many times repeat download test.\n\
+            \t--upsize SIZE - use upload size of SIZE bytes, not supported.\n\
+            \t--downtimes TIMES - how many times repeat download test, not supported.\n\
             \tSingle download test is downloading 30MB file.\n\
             \t--randomize NUMBER - randomize server usage for NUMBER of best servers\n\
             \nDefault action: Get server from Speedtest.NET infrastructure\n\
@@ -99,7 +99,6 @@ void getBestServer()
     if (speedTestConfig == NULL)
     {
         printf("Cannot download speedtest.net configuration. Something is wrong...\n");
-        freeMem();
         exit(1);
     }
     printf("Your IP: %s And ISP: %s\n",
@@ -171,7 +170,7 @@ static void getUserDefinedServer()
 
 int main(int argc, char **argv)
 {
-  totalToBeTransfered = 1024 * 1024;
+  totalToBeTransfered = 0;
   totalDownloadTestCount = 1;
   randomizeBestServers = 0;
   speedTestConfig = NULL;
@@ -187,7 +186,7 @@ int main(int argc, char **argv)
   }
 
   testDownload(uploadUrl);
-//   testUpload(uploadUrl);
+  testUpload(uploadUrl);
 
   freeMem();
   return 0;

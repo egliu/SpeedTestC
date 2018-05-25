@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <string.h>
+#include <stdbool.h>
 
 static void __appendTimestamp(const char *url, char *buff, int buff_len)
 {
@@ -23,63 +24,78 @@ static void *__uploadThread(void *arg)
 {
     /* Testing upload... */
 	THREADARGS_T *threadConfig = (THREADARGS_T *)arg;
-	char alphabet[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-	char buffer[BUFFER_SIZE] = {0};
 	int i, size, sockId;
-	struct timeval tval_start;
 	unsigned long totalTransfered = 0;
 	char uploadUrl[1024];
 
-	/* Build the random buffer */
-  srand(time(NULL));
-	for(i=0; i < BUFFER_SIZE; i++)
+	__appendTimestamp(threadConfig->url, uploadUrl, sizeof(uploadUrl));
+	/* FIXME: totalToBeTransfered should be readonly while the upload thread is running */
+  totalTransfered = threadConfig->totalToBeTransfered;
+  sockId = httpPutRequestSocket(uploadUrl, totalTransfered);
+  if(sockId == 0)
   {
-    buffer[i] = alphabet[rand() % ARRAY_SIZE(alphabet)];
+      printf("Unable to open socket for Upload!");
+      pthread_exit(NULL);
   }
 
-	gettimeofday(&tval_start, NULL);
-		__appendTimestamp(threadConfig->url, uploadUrl, sizeof(uploadUrl));
-		/* FIXME: totalToBeTransfered should be readonly while the upload thread is running */
-    totalTransfered = totalToBeTransfered;
-    sockId = httpPutRequestSocket(uploadUrl, totalToBeTransfered);
-    if(sockId == 0)
+  while((totalTransfered != 0) && (getElapsedTime(tval_start) < threadConfig->timeout))
+  {
+  	if (totalTransfered > BUFFER_SIZE)
     {
-        printf("Unable to open socket for Upload!");
-        pthread_exit(NULL);
-    }
-
-    while(totalTransfered != 0)
+  	  size = httpSend(sockId, uploadDataBuffer, BUFFER_SIZE);
+  	}
+    else
     {
-  		if (totalTransfered > BUFFER_SIZE)
-      {
-  	        size = httpSend(sockId, buffer, BUFFER_SIZE);
-  		}
-      else
-      {
-  			buffer[totalTransfered - 1] = '\n'; /* Indicate terminated */
-  			size = httpSend(sockId, buffer, totalTransfered);
-  		}
+			char buffer[BUFFER_SIZE] = {0};
+			memcpy(buffer, uploadDataBuffer, BUFFER_SIZE);
+  		buffer[totalTransfered - 1] = '\n'; /* Indicate terminated */
+  		size = httpSend(sockId, buffer, totalTransfered);
+  	}
 
-      totalTransfered -= size;
-		threadConfig->transferedBytes += totalToBeTransfered;
-		/* Cleanup */
-		httpClose(sockId);
+    totalTransfered -= size;
+		threadConfig->transferedBytes += size;
+		
 	}
-  threadConfig->elapsedSecs = getElapsedTime(tval_start);
+	/* Cleanup */
+	httpClose(sockId);
 
 	return NULL;
 }
 
 void testUpload(const char *url)
 {
-  size_t numOfThreads = speedTestConfig->uploadThreadConfig.threadsCount;
+	size_t numOfThreads = speedTestConfig->uploadThreadConfig.count *
+		speedTestConfig->uploadThreadConfig.sizeLength;
 	THREADARGS_T *param = (THREADARGS_T *) calloc(numOfThreads, sizeof(THREADARGS_T));
-	int i;
-	for (i = 0; i < numOfThreads; i++) {
-		/* Initializing some parameters */
-		param[i].url = strdup(url);
-		if (param[i].url) {
-			pthread_create(&param[i].tid, NULL, &__uploadThread, &param[i]);
+	bool outofRange = false;
+	char alphabet[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	/* Build the random buffer */
+  srand(time(NULL));
+	for (int count=0; count<BUFFER_SIZE; count++)
+  {
+    uploadDataBuffer[count] = alphabet[rand() % ARRAY_SIZE(alphabet)];
+  }
+
+	gettimeofday(&tval_start, NULL);
+	for (int sizeCount=0; sizeCount<speedTestConfig->uploadThreadConfig.sizeLength; sizeCount++) {
+		for (int threadsCount=0; threadsCount<speedTestConfig->uploadThreadConfig.count; threadsCount++) {
+			
+			int currentNum = sizeCount*speedTestConfig->uploadThreadConfig.count+threadsCount;
+			if (currentNum < speedTestConfig->upload_max) {
+				/* Initializing some parameters */
+				param[currentNum].totalToBeTransfered = speedTestConfig->uploadThreadConfig.sizes[sizeCount];
+				param[currentNum].url = strdup(url);
+				param[currentNum].timeout = speedTestConfig->uploadThreadConfig.length;
+				if (param[currentNum].url) {
+					pthread_create(&param[currentNum].tid, NULL, &__uploadThread, &param[currentNum]);
+				}
+			} else {
+				outofRange = true;
+				break;
+			}
+		}
+		if (outofRange == true) {
+			break;
 		}
 	}
 
@@ -88,17 +104,19 @@ void testUpload(const char *url)
 	float speed = 0;
 
 	/* Wait for all threads */
-	for (i = 0; i < numOfThreads; i++) {
-		pthread_join(param[i].tid, NULL);
-		if (param[i].transferedBytes) {
-			/* There's no reason that we transfered nothing except error occured */
-			totalTransfered += param[i].transferedBytes;
-			speed += (param[i].transferedBytes / param[i].elapsedSecs) / 1024;
+	for (int count = 0; count < numOfThreads; count++) {
+		if (param[count].tid) {
+			pthread_join(param[count].tid, NULL);
+			if (param[count].transferedBytes) {
+				/* There's no reason that we transfered nothing except error occured */
+				totalTransfered += param[count].transferedBytes;
+			}
+			/* Cleanup */
+			free(param[count].url);
 		}
-		/* Cleanup */
-		free(param[i].url);
 	}
 	free(param);
+	speed = totalTransfered / getElapsedTime(tval_start) / 1024;
 	printf("Bytes %lu uploaded with a speed %.2f kB/s (%.2f Mbit/s)\n",
         totalTransfered, speed, speed * 8 / 1024);
 }

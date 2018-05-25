@@ -11,7 +11,7 @@ SPEEDTESTSERVER_T **serverList;
 int serverCount;
 int i, size, sockId;
 unsigned totalDownloadTestCount;
-char buffer[BUFFER_SIZE];
+char uploadDataBuffer[BUFFER_SIZE];
 char *tmpUrl;
 char *uploadUrl;
 unsigned long totalToBeTransfered;
@@ -22,6 +22,7 @@ typedef struct thread_args {
   pthread_t tid;
   char *url;
   unsigned long transferedBytes;
+  unsigned long totalToBeTransfered;
   float elapsedSecs;
   unsigned int timeout;
 } THREADARGS_T;
